@@ -1,0 +1,26 @@
+{
+    "name": "phpmodern/push-hub",
+    "description": "Standalone SSE push daemon + publisher client — lets any PHP process (legacy FPM app or kernel app) push HTML updates to the browser without client-side polling.",
+    "type": "library",
+    "license": "MIT",
+    "require": {
+        "php": "^8.2",
+        "ext-json": "*"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^10.5"
+    },
+    "autoload": {
+        "psr-4": {
+            "PhpModern\\PushHub\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "PhpModern\\PushHub\\Tests\\": "tests/"
+        }
+    },
+    "bin": [
+        "bin/hub.php"
+    ]
+}
