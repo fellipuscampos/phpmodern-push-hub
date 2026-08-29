@@ -1,8 +1,13 @@
 /**
  * Browser-side half of the push-hub protocol: opens one EventSource per
- * channel and replaces the matching element's outerHTML whenever the hub
+ * channel and morphs the matching element in place whenever the hub
  * broadcasts an update. No polling, no manual reconnect logic needed —
  * EventSource retries the connection natively.
+ *
+ * Uses Idiomorph (vendored in ./vendor/idiomorph/) to patch only what
+ * changed, instead of a wholesale outerHTML replacement — this preserves
+ * focus, scroll position and any DOM/CSS state on parts of the component
+ * that didn't actually change.
  */
 export function connectPushChannel(channel, { hubOrigin = 'http://127.0.0.1:8081' } = {}) {
     const source = new EventSource(`${hubOrigin}/subscribe?channel=${encodeURIComponent(channel)}`);
@@ -15,7 +20,7 @@ export function connectPushChannel(channel, { hubOrigin = 'http://127.0.0.1:8081
 
         const element = document.getElementById(payload.id);
         if (element) {
-            element.outerHTML = payload.html;
+            Idiomorph.morph(element, payload.html);
         }
     };
 
