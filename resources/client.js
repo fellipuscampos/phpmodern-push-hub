@@ -12,15 +12,38 @@
 export function connectPushChannel(channel, { hubOrigin = 'http://127.0.0.1:8081' } = {}) {
     const source = new EventSource(`${hubOrigin}/subscribe?channel=${encodeURIComponent(channel)}`);
 
-    source.onmessage = (event) => {
-        const payload = JSON.parse(event.data);
-        if (!payload.id) {
-            return;
-        }
+    source.onopen = () => {
+        console.log(`[push-hub] connected: ${channel}`);
+    };
 
-        const element = document.getElementById(payload.id);
-        if (element) {
+    source.onerror = () => {
+        console.error(`[push-hub] connection error on channel "${channel}" (readyState=${source.readyState})`);
+    };
+
+    source.onmessage = (event) => {
+        try {
+            const payload = JSON.parse(event.data);
+            if (!payload.id) {
+                console.warn('[push-hub] message with no id, ignoring', payload);
+                return;
+            }
+
+            const element = document.getElementById(payload.id);
+            if (!element) {
+                console.warn(`[push-hub] no element with id "${payload.id}" found in the DOM`);
+                return;
+            }
+
+            if (typeof Idiomorph === 'undefined') {
+                console.error('[push-hub] Idiomorph is not loaded — falling back to outerHTML replace');
+                element.outerHTML = payload.html;
+                return;
+            }
+
             Idiomorph.morph(element, payload.html);
+            console.log(`[push-hub] morphed #${payload.id} from channel "${channel}"`);
+        } catch (error) {
+            console.error('[push-hub] failed to handle pushed update', error);
         }
     };
 
