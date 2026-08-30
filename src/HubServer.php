@@ -176,6 +176,7 @@ final class HubServer
         $message = json_encode([
             'id' => $payload['id'] ?? null,
             'html' => $payload['html'] ?? '',
+            'reload' => (bool) ($payload['reload'] ?? false),
         ]);
 
         foreach ($this->subscribers[$channel] ?? [] as $subscriberId => $subscriber) {

@@ -23,6 +23,13 @@ export function connectPushChannel(channel, { hubOrigin = 'http://127.0.0.1:8081
     source.onmessage = (event) => {
         try {
             const payload = JSON.parse(event.data);
+
+            if (payload.reload) {
+                console.log(`[push-hub] reload signal on channel "${channel}" — reloading`);
+                location.reload();
+                return;
+            }
+
             if (!payload.id) {
                 console.warn('[push-hub] message with no id, ignoring', payload);
                 return;

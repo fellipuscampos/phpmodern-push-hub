@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace PhpModern\PushHub;
 
 /**
- * Publishes an HTML update to the hub from any regular PHP request (a legacy
+ * Publishes an update to the hub from any regular PHP request (a legacy
  * FPM script or a kernel action handler) — a plain HTTP POST, no PHP
  * extension or persistent connection required on the publisher's side.
  */
@@ -19,7 +19,23 @@ final class HubClientPublisher
 
     public function publish(string $channel, string $id, string $html): void
     {
-        $body = json_encode(['channel' => $channel, 'id' => $id, 'html' => $html], JSON_THROW_ON_ERROR);
+        $this->send(['channel' => $channel, 'id' => $id, 'html' => $html]);
+    }
+
+    /**
+     * Tells every browser subscribed to $channel to do a full page reload —
+     * used by the dev-server's file watcher for hot reload, not by
+     * component updates (those use publish() to morph in place instead).
+     */
+    public function publishReload(string $channel): void
+    {
+        $this->send(['channel' => $channel, 'reload' => true]);
+    }
+
+    /** @param array<string, mixed> $payload */
+    private function send(array $payload): void
+    {
+        $body = json_encode($payload, JSON_THROW_ON_ERROR);
 
         $context = stream_context_create([
             'http' => [
