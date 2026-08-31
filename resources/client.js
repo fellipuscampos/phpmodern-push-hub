@@ -9,8 +9,9 @@
  * focus, scroll position and any DOM/CSS state on parts of the component
  * that didn't actually change.
  */
-export function connectPushChannel(channel, { hubOrigin = 'http://127.0.0.1:8081' } = {}) {
-    const source = new EventSource(`${hubOrigin}/subscribe?channel=${encodeURIComponent(channel)}`);
+export function connectPushChannel(channel, { hubOrigin = 'http://127.0.0.1:8081', token = null } = {}) {
+    const tokenParam = token !== null ? `&token=${encodeURIComponent(token)}` : '';
+    const source = new EventSource(`${hubOrigin}/subscribe?channel=${encodeURIComponent(channel)}${tokenParam}`);
 
     source.onopen = () => {
         console.log(`[push-hub] connected: ${channel}`);

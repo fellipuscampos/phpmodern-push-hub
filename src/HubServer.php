@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace PhpModern\PushHub;
 
+use Closure;
 use RuntimeException;
 
 /**
@@ -13,12 +14,26 @@ use RuntimeException;
  * slow/idle SSE connection can never starve the app's request pool). Any app
  * — legacy FPM script or kernel app — talks to it over plain HTTP:
  *
- *   GET  /subscribe?channel=X   -> upgrades to text/event-stream, kept open
- *   POST /publish               -> {"channel","id","html"} JSON body, broadcasts
+ *   GET  /subscribe?channel=X[&token=Y]   -> upgrades to text/event-stream, kept open
+ *   POST /publish                          -> {"channel","id","html"} JSON body, broadcasts
+ *
+ * A channel is still just a string, but $authorizer (if given) turns it
+ * into a private channel: subscribe requests a token, $authorizer decides
+ * whether that token may subscribe to that channel — reject with 403
+ * before ever upgrading to SSE. ChannelToken is the typed way to issue and
+ * check those tokens; $authorizer can also be any other callable, e.g. one
+ * backed by a session or database lookup.
  *
  * This is intentionally not a general-purpose HTTP server: it understands
  * only those two requests, enough to prove "server pushes HTML, browser never
- * polls" end to end. WebSocket/Swoole-backed drivers are a later milestone.
+ * polls" end to end. A WebSocket driver — genuine bidirectional
+ * communication instead of server-to-client-only SSE — was never built: a
+ * correct hand-rolled RFC 6455 implementation is real protocol work this
+ * project has no way to validate against real browsers/client libraries
+ * (unlike everything else here, checked against a real counterpart —
+ * Postgres, MySQL, a live SMTP server, a real browser via CDP), and pulling
+ * in Swoole would mean a genuinely heavy runtime dependency. Left open
+ * honestly rather than shipped unverified.
  */
 final class HubServer
 {
@@ -31,10 +46,15 @@ final class HubServer
     /** @var array<int, string> clientId => bytes received so far */
     private array $buffers = [];
 
+    private readonly ?Closure $authorizer;
+
+    /** @param (callable(string $channel, ?string $token): bool)|null $authorizer */
     public function __construct(
         private readonly string $host = '127.0.0.1',
         private readonly int $port = 8081,
+        ?callable $authorizer = null,
     ) {
+        $this->authorizer = $authorizer === null ? null : Closure::fromCallable($authorizer);
     }
 
     public function run(): void
@@ -148,6 +168,13 @@ final class HubServer
             return;
         }
 
+        if ($this->authorizer !== null && !($this->authorizer)($channel, self::parseToken($requestLine))) {
+            $this->writeAndClose($client, "HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n");
+            $this->dropClient($id);
+
+            return;
+        }
+
         fwrite(
             $client,
             "HTTP/1.1 200 OK\r\n" .
@@ -193,6 +220,15 @@ final class HubServer
     public static function parseChannel(string $requestLine): ?string
     {
         if (preg_match('#^GET /subscribe\?channel=([^\s&]+)#', $requestLine, $matches) !== 1) {
+            return null;
+        }
+
+        return urldecode($matches[1]);
+    }
+
+    public static function parseToken(string $requestLine): ?string
+    {
+        if (preg_match('#[?&]token=([^\s&]+)#', $requestLine, $matches) !== 1) {
             return null;
         }
 

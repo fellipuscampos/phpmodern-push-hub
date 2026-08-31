@@ -29,4 +29,25 @@ final class HubServerTest extends TestCase
     {
         self::assertNull(HubServer::parseChannel('POST /publish HTTP/1.1'));
     }
+
+    public function test_parses_token_from_subscribe_request_line(): void
+    {
+        self::assertSame(
+            'abc123',
+            HubServer::parseToken('GET /subscribe?channel=orders.42&token=abc123 HTTP/1.1'),
+        );
+    }
+
+    public function test_returns_null_when_no_token_is_present(): void
+    {
+        self::assertNull(HubServer::parseToken('GET /subscribe?channel=orders.42 HTTP/1.1'));
+    }
+
+    public function test_token_parses_regardless_of_query_parameter_order(): void
+    {
+        self::assertSame(
+            'abc123',
+            HubServer::parseToken('GET /subscribe?token=abc123&channel=orders.42 HTTP/1.1'),
+        );
+    }
 }
