@@ -1,0 +1,29 @@
+[Unit]
+Description=phpmodern push-hub (SSE broadcast daemon)
+Documentation=https://github.com/fellipuscampos/phpmodern-push-hub
+After=network.target
+
+[Service]
+Type=simple
+# Edit these two to match your deployment.
+User=www-data
+WorkingDirectory=/var/www/your-app
+
+# 127.0.0.1 8081 are the same defaults bin/hub.php uses when called with no
+# arguments — pass a different host/port here if your app's
+# HubClientPublisher/client.js are configured to match something else.
+ExecStart=/usr/bin/php vendor/bin/hub.php 127.0.0.1 8081
+
+# The hub holds every subscriber's connection in memory; a crash should
+# never take the whole server down with it, and it should come back on its
+# own — that's the entire point of running it as a supervised service
+# instead of a manually-started terminal process.
+Restart=on-failure
+RestartSec=2
+
+# journalctl -u phpmodern-push-hub -f to tail its output.
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
