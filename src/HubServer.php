@@ -111,7 +111,7 @@ final class HubServer
 
         [$head, $rest] = explode("\r\n\r\n", $this->buffers[$id], 2);
         $lines = explode("\r\n", $head);
-        $requestLine = $lines[0] ?? '';
+        $requestLine = $lines[0];
 
         if (str_starts_with($requestLine, 'GET /subscribe')) {
             $this->handleSubscribe($id, $client, $requestLine);
